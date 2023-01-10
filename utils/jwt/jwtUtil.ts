@@ -123,7 +123,7 @@ export const verifyRJwt = async (token: string) => {
     try {
         const decodedFPD = verify(
             token,
-            process.env.REFRESH_SIGNING_SECRET,
+            process.env.REFRESH_SIGNING_SECRET as string,
         ) as JwtPayload;
         const decoded = await reattachMetaData2(decodedFPD);
         return {
@@ -170,7 +170,7 @@ export const verifyAdminRJwt = async (token: string) => {
     try {
         const decodedFPD = verify(
             token,
-            process.env.ADMIN_REFRESH_SIGNING_SECRET,
+            process.env.ADMIN_REFRESH_SIGNING_SECRET as string,
         ) as JwtPayload;
         const decoded = await reattachMetaData2(decodedFPD);
         return {
@@ -192,7 +192,7 @@ export const verifyEmailJwt = (token: string) => {
     try {
         const decoded = verify(
             token,
-            process.env.JWT_EMAILVERIFY_SECRET,
+            process.env.JWT_EMAILVERIFY_SECRET as string,
         ) as JwtPayload;
         return {
             valid: true,
@@ -213,7 +213,7 @@ export const verifyEmailJwt = (token: string) => {
 const reattachMetaData = (decodedEncData: any) => {
     const decMetaData: any = decrypt(
         decodedEncData.meta_data,
-        process.env.ACCESS_TOKEN_SECRET,
+        process.env.ACCESS_TOKEN_SECRET as string,
     );
     const parsedDecData = JSON.parse(decMetaData);
     decodedEncData.userID = parsedDecData.userID;
@@ -227,7 +227,7 @@ const reattachMetaData = (decodedEncData: any) => {
 const reattachMetaData2 = (decodedEncData: any) => {
     const decMetaData: any = decrypt(
         decodedEncData.meta_data,
-        process.env.ACCESS_TOKEN_SECRET,
+        process.env.ACCESS_TOKEN_SECRET as string,
     );
     const parsedDecData = JSON.parse(decMetaData);
     decodedEncData.userID = parsedDecData.userID;
