@@ -13,7 +13,7 @@
 import { Schema, Document, model } from 'mongoose';
 import 'dotenv/config';
 
-export interface OrderDocument extends Document {
+export interface OrdersDocument extends Document {
     seller_id: Schema.Types.ObjectId;
     seller_email: string;
     buyer_id: Schema.Types.ObjectId;
@@ -23,7 +23,7 @@ export interface OrderDocument extends Document {
     updatedAt: Date;
 }
 
-export const OrderSchema = new Schema<OrderDocument>({
+export const ordersSchema = new Schema<OrdersDocument>({
     seller_id: {
         type: Schema.Types.ObjectId,
         ref: 'Seller',
@@ -58,3 +58,8 @@ export const OrderSchema = new Schema<OrderDocument>({
         timestamps: true,
     }
 )
+
+export const OrdersModel = model<OrdersDocument>(
+    'Orders',
+    ordersSchema,
+);

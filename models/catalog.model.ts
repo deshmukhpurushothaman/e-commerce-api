@@ -16,7 +16,7 @@ import 'dotenv/config';
 export interface CatalogDocument extends Document {
     seller_id: Schema.Types.ObjectId;
     seller_email: string;
-    products: Array<Object>;
+    products?: Array<Object>;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -45,3 +45,8 @@ export const CatalogSchema = new Schema<CatalogDocument>(
         timestamps: true
     }
 )
+
+export const CatalogModel = model<CatalogDocument>(
+    'Catalog',
+    CatalogSchema,
+);
