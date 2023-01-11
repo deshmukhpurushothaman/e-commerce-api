@@ -35,8 +35,9 @@ import sanitizePayload from '../utils/misc/sanitize';
 import { sendRefreshToken } from '../utils/jwt/sendRefreshToken';
 import { encrypt } from '../utils/crypto/encdecUtil';
 import { GEncryptedKey } from '../models/users.model';
-import { createSeller, findOneSeller, invalidateSellerJWT, validateSellerPassword } from '../services/seller.service';
+import { createSeller, fetchAllSellers, findOneSeller, invalidateSellerJWT, validateSellerPassword } from '../services/seller.service';
 import { createUserSchema } from '../schema/user.schema';
+import { addNewProduct, fetchOneCatalog } from '../services/catalog.service';
 
 const metaS = 'core-seller-actions';
 
@@ -363,3 +364,69 @@ export const sellerwhoamIRouteHandler = async (
             .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
     }
 };
+
+export const addProduct = async (
+    req: Request,
+    res: Response,
+) => {
+    try {
+        const productExists = await fetchOneCatalog(
+            {
+                seller_id: res.locals.seller.userID,
+                'products.$.name': req.body.name
+            }
+        )
+
+        if (productExists) {
+            logger.error('Product already exists');
+            return res.status(HTTP_STATUS_CODE.CONFLICT)
+                .json(errorResponse('Product already exists'))
+        }
+        const newProduct = await addNewProduct(
+            {
+                seller_id: res.locals.seller.userID,
+            },
+            {
+                '$push': {
+                    products: {
+                        name: req.body.name,
+                        price: req.body.price
+                    }
+                }
+            }
+        )
+
+        if (newProduct) {
+            return res
+                .status(HTTP_STATUS_CODE.OK)
+                .json(successResponse('Product created'))
+        }
+        return res
+            .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
+            .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
+    } catch (error) {
+        logger.error(error.message);
+        return res
+            .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
+            .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
+    }
+}
+
+export const fetchSellers = async (
+    req: Request,
+    res: Response,
+) => {
+    try {
+        const sellers = await fetchAllSellers();
+        return res
+            .status(HTTP_STATUS_CODE.OK)
+            .json({
+                data: sellers
+            })
+    } catch (error) {
+        logger.error(error.message);
+        return res
+            .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
+            .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
+    }
+}
