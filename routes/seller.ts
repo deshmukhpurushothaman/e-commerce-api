@@ -19,10 +19,17 @@ import {
     logoutSellerHandler,
     sellerwhoamIRouteHandler,
     addProduct,
-    fetchOrders
+    fetchOrders,
+    registerSellerHandler
 } from '../controllers/seller.controller';
 
 const router = express.Router();
+
+// REGISTER
+router.post(
+    '/register',
+    registerSellerHandler,
+);
 
 // LOGIN sellers (common)
 router.post(

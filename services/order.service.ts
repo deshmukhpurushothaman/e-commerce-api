@@ -28,7 +28,7 @@ export const createOrder = async (
         const order = new OrdersModel(input);
         await order.save();
         return true;
-    } catch (error) {
+    } catch (error: any) {
         logger.error(error)
         return false
     }
@@ -37,7 +37,7 @@ export const createOrder = async (
 export const fetchSellerOrders = async (query: any, populate: string[] | string = '') => {
     try {
         return await OrdersModel.find(query).populate(populate)
-    } catch (error) {
+    } catch (error: any) {
         throw error
     }
 }

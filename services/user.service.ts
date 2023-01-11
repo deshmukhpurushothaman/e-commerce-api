@@ -94,7 +94,7 @@ export async function findOneUser(
             // )
             .select(fields)
             .lean();
-    } catch (error) {
+    } catch (error: any) {
         throw error;
     }
 }
@@ -107,7 +107,7 @@ export async function updateUser(
         return await UserModel.findOneAndUpdate(query, set, {
             new: true,
         });
-    } catch (error) {
+    } catch (error: any) {
         throw error;
     }
 }
@@ -121,7 +121,7 @@ export const invalidateJWT = async (query: any, inc: any) => {
         return await UserModel.findOneAndUpdate(query, inc, {
             new: true,
         });
-    } catch (error) {
+    } catch (error: any) {
         logger.error(error);
         throw error;
     }

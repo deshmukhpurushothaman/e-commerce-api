@@ -28,9 +28,8 @@ import { errorResponse } from './utils/response/responseUtil';
 //  import sanitizeCHTML from './middlewares/sanitizechtml';
 //  import userAgentGrabber from './middlewares/userAgentGrabber';
 import { connectDB } from './utils/dbConnect/connect';
-//  import user from './routes/users';
-//  import admin from './routes/admin';
-//  import course from './routes/course';
+import user from './routes/users';
+import seller from './routes/seller';
 
 export const startExpressServer = async () => {
     try {
@@ -70,12 +69,6 @@ export const startExpressServer = async () => {
         /* API LEVEL MIDDLEWARES
          */
         app.use(nocache());
-        // app.use(
-        //     cors({
-        //         origin: process.env.REACT_APP_HOST as string,
-        //         credentials: true,
-        //     }),
-        // );
         app.use(cors())
         app.use(express.json(options));
         // This check makes sure this is a JSON parsing issue, but it might be
@@ -118,8 +111,8 @@ export const startExpressServer = async () => {
             },
         );
         // ROUTES
-        //  app.use('/learn/user', user)
-        //  app.use('/learn/admin', admin)
+        app.use('/api/user', user)
+        app.use('/api/seller', seller)
         //  app.use('/learn/course', course)
 
         // minimalistic errorHandler if wrong route is hit

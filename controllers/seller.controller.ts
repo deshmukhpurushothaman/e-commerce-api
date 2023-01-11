@@ -37,7 +37,7 @@ import { encrypt } from '../utils/crypto/encdecUtil';
 import { GEncryptedKey } from '../models/users.model';
 import { createSeller, fetchAllSellers, findOneSeller, invalidateSellerJWT, validateSellerPassword } from '../services/seller.service';
 import { createUserSchema } from '../schema/user.schema';
-import { addNewProduct, fetchOneCatalog } from '../services/catalog.service';
+import { addNewProduct, createCatalog, fetchOneCatalog } from '../services/catalog.service';
 import { fetchSellerOrders } from '../services/order.service';
 
 const metaS = 'core-seller-actions';
@@ -107,7 +107,11 @@ export const registerSellerHandler = async (
         const user = (await createSeller(input)) as unknown as InstanceType<
             typeof SellerModel
         >;
-        // await createDepositAddresses(user._id);
+        console.log({ user })
+        await createCatalog({
+            seller_id: user._id,
+            seller_email: user.email
+        })
 
         // if above checks passed, then provide access token for user
         // send refersh token as cookie
@@ -374,7 +378,7 @@ export const addProduct = async (
         const productExists = await fetchOneCatalog(
             {
                 seller_id: res.locals.seller.userID,
-                'products.$.name': req.body.name
+                'products.name': req.body.name
             }
         )
 
@@ -405,7 +409,7 @@ export const addProduct = async (
         return res
             .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
             .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
-    } catch (error) {
+    } catch (error: any) {
         logger.error(error.message);
         return res
             .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
@@ -431,7 +435,7 @@ export const fetchOrders = async (
         return res
             .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
             .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
-    } catch (error) {
+    } catch (error: any) {
         logger.error(error.message);
         return res
             .status(HTTP_STATUS_CODE.INTERNAL_SERVER)

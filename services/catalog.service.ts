@@ -33,7 +33,7 @@ export const createCatalog = async (
         const catalog = new CatalogModel(input);
         await catalog.save();
         return true;
-    } catch (error) {
+    } catch (error: any) {
         throw error;
     }
 }
@@ -41,7 +41,7 @@ export const createCatalog = async (
 export const fetchOneCatalog = async (query: any, populate: string[] | string = '') => {
     try {
         return CatalogModel.findOne(query).populate(populate)
-    } catch (error) {
+    } catch (error: any) {
         logger.error(error)
         throw error
     }
@@ -55,7 +55,7 @@ export const addNewProduct = async (
         return await CatalogModel.findOneAndUpdate(query, set, {
             new: true,
         });
-    } catch (error) {
+    } catch (error: any) {
         logger.error(error)
         throw error
     }

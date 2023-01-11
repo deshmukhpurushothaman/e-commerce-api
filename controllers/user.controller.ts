@@ -354,7 +354,7 @@ export const fetchSellerCatalog = async (
             .json({
                 data: catalog?.products
             })
-    } catch (error) {
+    } catch (error: any) {
         logger.error(error.message);
         return res
             .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
@@ -367,7 +367,9 @@ export const placeOrder = async (
     res: Response,
 ) => {
     try {
-        const input = req.body
+        let input = req.body
+        input['buyer_id'] = res.locals.user.userID
+        input['buyer_email'] = res.locals.user.userEmail
         const order = (await createOrder(input)) as unknown as InstanceType<
             typeof OrdersModel
         >;
@@ -379,7 +381,7 @@ export const placeOrder = async (
         return res
             .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
             .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
-    } catch (error) {
+    } catch (error: any) {
         logger.error(error.message);
         return res
             .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
@@ -398,7 +400,7 @@ export const fetchSellers = async (
             .json({
                 data: sellers
             })
-    } catch (error) {
+    } catch (error: any) {
         logger.error(error.message);
         return res
             .status(HTTP_STATUS_CODE.INTERNAL_SERVER)

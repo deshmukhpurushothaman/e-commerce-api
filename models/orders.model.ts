@@ -30,11 +30,11 @@ export const ordersSchema = new Schema<OrdersDocument>({
         unique: false,
         required: false,
     },
-    seller_email: {
-        type: String,
-        unique: false,
-        required: true,
-    },
+    // seller_email: {
+    //     type: String,
+    //     unique: false,
+    //     required: true,
+    // },
     buyer_id: {
         type: Schema.Types.ObjectId,
         ref: 'User',

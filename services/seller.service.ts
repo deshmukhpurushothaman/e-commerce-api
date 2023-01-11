@@ -35,7 +35,7 @@ export async function createSeller(
         }
         const seller = new SellerModel(input);
         await seller.save();
-        return true;
+        return omit(seller.toJSON(), 'password');
     } catch (error: any) {
         throw error;
     }
@@ -79,7 +79,7 @@ export async function findOneSeller(
         return await SellerModel.findOne(query)
             .select('-updatedAt -createdAt -tokenVersion -__v')
             .lean();
-    } catch (error) {
+    } catch (error: any) {
         throw error;
     }
 }
@@ -93,7 +93,7 @@ export const invalidateSellerJWT = async (query: any, inc: any) => {
         return await SellerModel.findOneAndUpdate(query, inc, {
             new: true,
         });
-    } catch (error) {
+    } catch (error: any) {
         logger.error(error);
         throw error;
     }
@@ -102,7 +102,7 @@ export const invalidateSellerJWT = async (query: any, inc: any) => {
 export const fetchAllSellers = async () => {
     try {
         return await SellerModel.find();
-    } catch (error) {
+    } catch (error: any) {
         logger.error(error)
         throw error
     }
