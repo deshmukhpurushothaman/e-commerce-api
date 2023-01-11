@@ -34,7 +34,7 @@ export const createOrder = async (
     }
 }
 
-export const fetchSellerOrders = async (query: any, populate: string[] | string) => {
+export const fetchSellerOrders = async (query: any, populate: string[] | string = '') => {
     try {
         return await OrdersModel.find(query).populate(populate)
     } catch (error) {

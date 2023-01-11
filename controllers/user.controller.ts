@@ -41,6 +41,9 @@ import {
 } from '../utils/jwt/jwtUtil';
 import { sendRefreshToken } from '../utils/jwt/sendRefreshToken';
 import { fetchOneCatalog } from '../services/catalog.service';
+import { createOrder } from '../services/order.service';
+import { OrdersModel } from '../models/orders.model';
+import { fetchAllSellers } from '../services/seller.service';
 
 const metaS = 'core-user-actions';
 /**
@@ -350,6 +353,50 @@ export const fetchSellerCatalog = async (
             .status(HTTP_STATUS_CODE.OK)
             .json({
                 data: catalog?.products
+            })
+    } catch (error) {
+        logger.error(error.message);
+        return res
+            .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
+            .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
+    }
+}
+
+export const placeOrder = async (
+    req: Request,
+    res: Response,
+) => {
+    try {
+        const input = req.body
+        const order = (await createOrder(input)) as unknown as InstanceType<
+            typeof OrdersModel
+        >;
+        if (order) {
+            return res
+                .status(HTTP_STATUS_CODE.CREATED)
+                .json(successResponse('Order placed successfully'))
+        }
+        return res
+            .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
+            .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
+    } catch (error) {
+        logger.error(error.message);
+        return res
+            .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
+            .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
+    }
+}
+
+export const fetchSellers = async (
+    req: Request,
+    res: Response,
+) => {
+    try {
+        const sellers = await fetchAllSellers();
+        return res
+            .status(HTTP_STATUS_CODE.OK)
+            .json({
+                data: sellers
             })
     } catch (error) {
         logger.error(error.message);

@@ -38,6 +38,7 @@ import { GEncryptedKey } from '../models/users.model';
 import { createSeller, fetchAllSellers, findOneSeller, invalidateSellerJWT, validateSellerPassword } from '../services/seller.service';
 import { createUserSchema } from '../schema/user.schema';
 import { addNewProduct, fetchOneCatalog } from '../services/catalog.service';
+import { fetchSellerOrders } from '../services/order.service';
 
 const metaS = 'core-seller-actions';
 
@@ -412,17 +413,24 @@ export const addProduct = async (
     }
 }
 
-export const fetchSellers = async (
+
+
+export const fetchOrders = async (
     req: Request,
     res: Response,
 ) => {
     try {
-        const sellers = await fetchAllSellers();
+        const orders = await fetchSellerOrders({ seller_id: res.locals.seller.userID });
+        if (orders) {
+            return res
+                .status(HTTP_STATUS_CODE.OK)
+                .json({
+                    data: orders
+                })
+        }
         return res
-            .status(HTTP_STATUS_CODE.OK)
-            .json({
-                data: sellers
-            })
+            .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
+            .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
     } catch (error) {
         logger.error(error.message);
         return res
