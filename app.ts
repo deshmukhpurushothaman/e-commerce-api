@@ -125,7 +125,7 @@ export const startExpressServer = async () => {
 
         const PORT = process.env.PORT;
 
-        app.listen(PORT, () => {
+        app.listen(PORT || 5000, () => {
             logger.info('🎇 Server is running on port:' + PORT);
         });
     } catch (error: any) {
