@@ -40,6 +40,7 @@ import {
     verifyRJwt
 } from '../utils/jwt/jwtUtil';
 import { sendRefreshToken } from '../utils/jwt/sendRefreshToken';
+import { fetchOneCatalog } from '../services/catalog.service';
 
 const metaS = 'core-user-actions';
 /**
@@ -338,3 +339,22 @@ export const logoutUserHandler = async (
             .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
     }
 };
+
+export const fetchSellerCatalog = async (
+    req: Request,
+    res: Response,
+) => {
+    try {
+        const catalog = await fetchOneCatalog({ seller_id: req.params.sellerID })
+        return res
+            .status(HTTP_STATUS_CODE.OK)
+            .json({
+                data: catalog?.products
+            })
+    } catch (error) {
+        logger.error(error.message);
+        return res
+            .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
+            .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
+    }
+}
