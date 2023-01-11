@@ -16,14 +16,14 @@ import 'dotenv/config';
 import { logger } from '../../utils/logger/loggerUtil';
 import { decrypt } from '../crypto/encdecUtil';
 
-// 🎈 can also change the jwt secret for admin so that it is different from user
-export const createAdminAccessToken = (meta_data: GEncryptedKey) => {
+// 🎈 can also change the jwt secret for seller so that it is different from user
+export const createSellerAccessToken = (meta_data: GEncryptedKey) => {
     const accTokens = sign(
         {
             meta_data,
         },
-        process.env.ADMIN_JWT_SIGNING_SECRET as string,
-        { expiresIn: process.env.adminAccessTokenTtl as string },
+        process.env.SELLER_JWT_SIGNING_SECRET as string,
+        { expiresIn: process.env.sellerAccessTokenTtl as string },
     );
     return accTokens;
 };
@@ -66,13 +66,13 @@ export const createRefreshToken = (meta_data: GEncryptedKey) => {
         { expiresIn: process.env.refreshTokenTtl as string },
     );
 };
-export const createAdminRefreshToken = (meta_data: GEncryptedKey) => {
+export const createSellerRefreshToken = (meta_data: GEncryptedKey) => {
     return sign(
         {
             meta_data,
         },
-        process.env.ADMIN_REFRESH_SIGNING_SECRET as string,
-        { expiresIn: process.env.adminrefreshTokenTtl as string },
+        process.env.SELLER_REFRESH_SIGNING_SECRET as string,
+        { expiresIn: process.env.sellerrefreshTokenTtl as string },
     );
 };
 
@@ -141,13 +141,13 @@ export const verifyRJwt = async (token: string) => {
     }
 };
 
-/**=================ADMINS=================== */
-export const verifyAdminJwt = async (token: string) => {
+/**=================SELLERS=================== */
+export const verifySellerJwt = async (token: string) => {
     try {
         // verify JWT token
         const decodedFPD: any = verify(
             token,
-            process.env.ADMIN_JWT_SIGNING_SECRET as string,
+            process.env.SELLER_JWT_SIGNING_SECRET as string,
         ) as JwtPayload;
         // decrypt metadata from jwt pd
         const decoded = await reattachMetaData(decodedFPD);
@@ -166,11 +166,11 @@ export const verifyAdminJwt = async (token: string) => {
     }
 };
 
-export const verifyAdminRJwt = async (token: string) => {
+export const verifySellerRJwt = async (token: string) => {
     try {
         const decodedFPD = verify(
             token,
-            process.env.ADMIN_REFRESH_SIGNING_SECRET as string,
+            process.env.SELLER_REFRESH_SIGNING_SECRET as string,
         ) as JwtPayload;
         const decoded = await reattachMetaData2(decodedFPD);
         return {

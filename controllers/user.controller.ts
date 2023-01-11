@@ -5,41 +5,43 @@
  *
  * Author            : Deshmukh P
  *
- * Date created      : 10/01/2023
+ * Date created      : 11/01/2023
  *
- * Purpose           : Seller Controllers
+ * Purpose           : Users Controllers
  **********************************************************************
  */
+import 'dotenv/config';
 import { Request, Response } from 'express';
+import fs from 'fs';
 import { logger, dbLogger } from '../utils/logger/loggerUtil';
+import { createUserSchema } from '../schema/user.schema';
 import { ERROR_MESSAGE, HTTP_STATUS_CODE } from '../utils/const/constants';
 import {
-    errorResponse,
     successResponse,
+    errorResponse,
 } from '../utils/response/responseUtil';
-import { DocumentDefinition, FilterQuery, SortValues } from 'mongoose';
+import { DocumentDefinition } from 'mongoose';
 import {
-    SellerDocument,
-    SellerModel,
-} from '../models/seller.model';
+    UserDocument,
+    UserModel,
+    GEncryptedKey,
+} from '../models/users.model';
 import {
-    createSellerAccessToken,
-    createSellerRefreshToken,
-    createlogoutToken,
-    verifySellerJwt,
-    verifySellerRJwt,
-    //verifyJwt,
-    verifyJwtEmailToken,
-} from '../utils/jwt/jwtUtil';
-import sanitizePayload from '../utils/misc/sanitize';
-import { sendRefreshToken } from '../utils/jwt/sendRefreshToken';
+    createUser,
+    invalidateJWT,
+    validatePassword,
+    findOneUser
+} from '../services/user.service';
 import { encrypt } from '../utils/crypto/encdecUtil';
-import { GEncryptedKey } from '../models/users.model';
-import { createSeller, findOneSeller, invalidateSellerJWT, validateSellerPassword } from '../services/seller.service';
-import { createUserSchema } from '../schema/user.schema';
+import {
+    createAccessToken,
+    createRefreshToken,
+    verifyJwt,
+    verifyRJwt
+} from '../utils/jwt/jwtUtil';
+import { sendRefreshToken } from '../utils/jwt/sendRefreshToken';
 
-const metaS = 'core-seller-actions';
-
+const metaS = 'core-user-actions';
 /**
  * UNPROTECTED
  * Handler for creating/registering users
@@ -47,13 +49,13 @@ const metaS = 'core-seller-actions';
  * @param res
  * @returns 201 status on successful operation
  */
-export const registerSellerHandler = async (
+export const registerUserHandler = async (
     req: Request<
         unknown,
         unknown,
         DocumentDefinition<
             Omit<
-                SellerDocument,
+                UserDocument,
                 'updatedAt' | 'createdAt' | 'comparePassword'
             >
         >
@@ -77,7 +79,6 @@ export const registerSellerHandler = async (
             !inputValidation.success ||
             input.phone_no.toString().length < 10
         ) {
-
             logger.error(
                 `Input Validation was - ${inputValidation.success
                 } | phone_no check failed | ${JSON.stringify(inputValidation)}`,
@@ -86,7 +87,6 @@ export const registerSellerHandler = async (
                 .status(HTTP_STATUS_CODE.BAD_REQUEST)
                 .json(errorResponse(JSON.parse(JSON.stringify(inputValidation))));
         }
-
 
         // create short name initials & attaching with input
         const fullName = input.name;
@@ -102,8 +102,8 @@ export const registerSellerHandler = async (
         splitEmail[1] = splitEmail[1].toLowerCase();
         input.email = splitEmail.join('@');
 
-        const user = (await createSeller(input)) as unknown as InstanceType<
-            typeof SellerModel
+        const user = (await createUser(input)) as InstanceType<
+            typeof UserModel
         >;
         // await createDepositAddresses(user._id);
 
@@ -119,7 +119,7 @@ export const registerSellerHandler = async (
             JSON.stringify(ref_pd_to_encrypt),
             process.env.ACCESS_TOKEN_SECRET as string,
         );
-        sendRefreshToken(res, createSellerRefreshToken(UserRefreshInfo));
+        sendRefreshToken(res, createRefreshToken(UserRefreshInfo));
 
         // sending access token as response
         const pd_to_encrypt: object = {
@@ -133,10 +133,10 @@ export const registerSellerHandler = async (
             JSON.stringify(pd_to_encrypt),
             process.env.ACCESS_TOKEN_SECRET as string,
         );
-        const accessToken = await createSellerAccessToken(UserInfo);
+        const accessToken = await createAccessToken(UserInfo);
 
         //{ decoded, expired, valid }
-        const { decoded } = await verifySellerJwt(accessToken);
+        const { decoded } = await verifyJwt(accessToken);
 
         return res.status(HTTP_STATUS_CODE.CREATED).json({
             accessToken,
@@ -183,12 +183,12 @@ export const registerSellerHandler = async (
 
 /**
  * UNPROTECTED
- * Handler for validating email & password combo for seller
+ * Handler for validating email & password combo
  * @param req
  * @param res
- * @returns an accessToken in response
+ * @returns an accessToken in response (also sends refresh token as cookie jid)
  */
-export const loginSellerHandler = async (
+export const loginUserHandler = async (
     req: Request<
         unknown,
         unknown,
@@ -198,70 +198,64 @@ export const loginSellerHandler = async (
     res: Response,
 ) => {
     try {
-        const { message, cleanPD } = await sanitizePayload(req.body);
-        if (message === 'success') {
-            req.body = cleanPD;
-        }
-        if (message === 'failed') {
-            req.body = req.body;
-        }
         if (!req.body.email || !req.body.password) {
             logger.error('missing email,password in request body');
             return res
                 .status(HTTP_STATUS_CODE.BAD_REQUEST)
                 .json(errorResponse(ERROR_MESSAGE.REQUIRED_PARAMETERS_MISSING));
         }
-        const seller = await SellerModel.findOne({
+        const user = await UserModel.findOne({
             email: req.body.email,
         });
-        const validPass = await validateSellerPassword(req.body);
+
+        const validPass = await validatePassword(req.body);
         if (!validPass) {
             return res
                 .status(HTTP_STATUS_CODE.UNAUTHORIZED)
-                .json(errorResponse(ERROR_MESSAGE.UNAUTHORIZED));
+                .json({ message: 'Incorrect Email/Password was provided' });
         }
 
         // user not found in db
-        if (!seller) {
-            logger.error('seller not found in db');
+        if (!user) {
+            logger.error('user not found in db');
             return res
                 .status(HTTP_STATUS_CODE.UNAUTHORIZED)
-                .json(errorResponse(`seller do not exists with ${req.body.email}`));
+                .json(errorResponse(`No user exists with ${req.body.email}`));
         }
 
         // if above checks passed, then provide access token for user
-        // send refresh token as cookie
+        // send refersh token as cookie
         // refresh & access token use different secret refer .env
         const ref_pd_to_encrypt: object = {
-            userID: seller._id,
-            userEmail: seller.email,
-            tokenVersion: seller.tokenVersion,
+            userID: user._id,
+            userEmail: user.email,
+            tokenVersion: user.tokenVersion,
         };
         const UserRefreshInfo: GEncryptedKey = encrypt(
             JSON.stringify(ref_pd_to_encrypt),
             process.env.ACCESS_TOKEN_SECRET as string,
         );
-        sendRefreshToken(res, createSellerRefreshToken(UserRefreshInfo));
+        sendRefreshToken(res, createRefreshToken(UserRefreshInfo));
 
         // sending access token as response
         const pd_to_encrypt: object = {
-            userID: seller._id,
-            userEmail: seller.email,
-            role: seller.role,
-            tokenVersion: seller.tokenVersion,
+            userID: user._id,
+            userEmail: user.email,
+            role: user.role,
+            tokenVersion: user.tokenVersion,
         };
-        // user info as metadata to be embeded in jwt token payload signature
+        // encrypting user info as metadata to be embeded in jwt token payload signature
         const UserInfo: GEncryptedKey = encrypt(
             JSON.stringify(pd_to_encrypt),
             process.env.ACCESS_TOKEN_SECRET as string,
         );
-        const accessToken = createSellerAccessToken(UserInfo);
+        const accessToken = await createAccessToken(UserInfo);
 
-        dbLogger.info('seller logged in successfully', {
+        dbLogger.info('User logged in successfully', {
             metadata: {
                 metaService: `${metaS}`,
-                By: `${seller.email}`,
-                viaOTP: true,
+                By: `${req.body.email}`,
+                viaOTP: false,
             },
         });
         // sending access token as response
@@ -270,6 +264,11 @@ export const loginSellerHandler = async (
         });
     } catch (error: any) {
         logger.error(error.message);
+        if (error.message === "Cannot read property 'isActive' of null") {
+            return res
+                .status(HTTP_STATUS_CODE.NOT_FOUND)
+                .json(errorResponse('No user registered with this email...'));
+        }
         return res
             .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
             .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
@@ -283,7 +282,7 @@ export const loginSellerHandler = async (
  * @param res
  * @returns an accessToken in response (also sends refresh token as cookie jid)
  */
-export const logoutSellerHandler = async (
+export const logoutUserHandler = async (
     req: Request<unknown, unknown, { email: 'string' }, unknown>,
     res: Response,
 ) => {
@@ -292,11 +291,12 @@ export const logoutSellerHandler = async (
             .status(HTTP_STATUS_CODE.FORBIDDEN)
             .json(errorResponse('required payload missing in request body....'));
     }
-    if (res.locals.seller.userEmail !== req.body.email) {
+    if (res.locals.user.userEmail !== req.body.email) {
         return res
             .status(HTTP_STATUS_CODE.UNAUTHORIZED)
             .json(errorResponse(ERROR_MESSAGE.UNAUTHORIZED));
     }
+    const currentUser = res.locals.user.userID;
     const ref_token = req.cookies['jid'];
     if (!ref_token) {
         return res
@@ -304,17 +304,17 @@ export const logoutSellerHandler = async (
             .json(errorResponse(ERROR_MESSAGE.UNAUTHORIZED));
     }
     try {
-        const currentSeller = res.locals.seller.data;
-        if (!currentSeller) {
+        const userD = res.locals.user.data;
+        if (!userD) {
             return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
                 message: `User not found with this email:${req.body.email}`,
             });
         }
         // flow
-        const ref_token_decoded = await verifySellerRJwt(ref_token);
+        const ref_token_decoded = await verifyRJwt(ref_token);
         // assume they are logged in
-        const reso = await invalidateSellerJWT(
-            { _id: currentSeller._id },
+        const reso = await invalidateJWT(
+            { _id: currentUser },
             { $inc: { tokenVersion: 1 } },
         );
         if (reso?.tokenVersion === ref_token_decoded.decoded.tokenVersion) {
@@ -327,35 +327,10 @@ export const logoutSellerHandler = async (
             });
         }
         return res.status(200).json({
-            message: `${res.locals.seller.userEmail} successfully logged out`,
-            user: res.locals.seller.userEmail,
+            message: `${res.locals.user.userEmail} successfully logged out`,
+            user: res.locals.user.userEmail,
             loggedOut: true,
         });
-    } catch (error: any) {
-        logger.error(error.message);
-        return res
-            .status(HTTP_STATUS_CODE.INTERNAL_SERVER)
-            .json(errorResponse(ERROR_MESSAGE.INTERNAL_SERVER_ERROR));
-    }
-};
-
-/**
- * PROTECTED
- * userAuth middleware to validate ACCESS_TOKEN
- * fetches current user details
- * @param req
- * @param res
- * @returns res object with users with 200 statusCode on success
- */
-export const sellerwhoamIRouteHandler = async (
-    req: Request,
-    res: Response,
-) => {
-    try {
-        const sellerDetails = await findOneSeller({
-            _id: res.locals.seller.userID,
-        });
-        return res.status(HTTP_STATUS_CODE.OK).json(sellerDetails);
     } catch (error: any) {
         logger.error(error.message);
         return res
